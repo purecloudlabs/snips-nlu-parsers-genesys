@@ -19,6 +19,14 @@ timeout(150) {
         sh """
         source $HOME/.cargo/env
         """
+
+        sh """
+        python setup.py develop
+        """
+
+        sh """
+        cd ./python/ffi/target/debug | ls
+        """
       }
     }
 }

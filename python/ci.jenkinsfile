@@ -1,0 +1,24 @@
+@Library('pipeline-library@master')
+import com.genesys.jenkins.CI
+
+
+timeout(150) {
+    node('dev_v2') {
+      ECR_REPO = "490606849374.dkr.ecr.us-east-1.amazonaws.com/ai-platform"
+      ECR_REGISTRY_ID = "490606849374"
+      ECR_REGION = "us-east-1"
+
+      env.BUILD_STATUS = 'SUCCESS'
+
+
+      stage('Provide dynamodb and minio containers for testing') {
+        sh """
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+        """
+
+        sh """
+        source $HOME/.cargo/env
+        """
+      }
+    }
+}

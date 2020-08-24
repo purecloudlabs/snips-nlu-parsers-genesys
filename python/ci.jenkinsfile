@@ -121,7 +121,8 @@ timeout(150) {
       stage('Provide dynamodb and minio containers for testing') {
 
         sh """
-        docker build .
+        docker build -t snipspg .
+        docker container run snipspg /bin/bash -c "source $HOME/.cargo/env && python3.6 setup.py bdist_wheel upload -r inin-pypi"
         // curl https://sh.rustup.rs -sSf | sh -s -- -y
         // source $HOME/.cargo/env
         // virtualenv -p python3.6 venv --clear

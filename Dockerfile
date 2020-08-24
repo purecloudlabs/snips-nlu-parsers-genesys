@@ -12,7 +12,7 @@ USER nlu_user
 
 WORKDIR ${WORKDIR}
 COPY pip.conf /home/nlu_user/.pip/pip.conf
-COPY python ${WORKDIR}/
+COPY . ${WORKDIR}/
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
     && /bin/bash -c "source $HOME/.cargo/env && python3.6 -m pip install  --user setuptools_rust==0.8.4"

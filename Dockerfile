@@ -2,6 +2,7 @@ FROM python:3.6-slim-buster
 
 ENV WORKDIR=/snipspg
 
+RUN apt-get update && apt-get install -y curl
 RUN groupadd -g 1001 nlu_user && useradd -r -m -u 1001 -g nlu_user nlu_user
 
 RUN mkdir ${WORKDIR}

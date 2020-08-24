@@ -121,7 +121,7 @@ timeout(150) {
       stage('Provide dynamodb and minio containers for testing') {
 
         sh """
-        Docker build .
+        docker build .
         // curl https://sh.rustup.rs -sSf | sh -s -- -y
         // source $HOME/.cargo/env
         // virtualenv -p python3.6 venv --clear

@@ -1,6 +1,80 @@
 @Library('pipeline-library@master')
 import com.genesys.jenkins.CI
+def sendMail(NICKNAME) {
+  String[] mailingList = [
+      "nluscrum@genesys.com"
+    ]
 
+  if (NICKNAME == 'main') { // send email to dev team
+    emailext (
+      to: mailingList.join(" "),
+      subject: '$PROJECT_NAME - Build # $BUILD_NUMBER - ' + "${env.BUILD_STATUS}",
+      body: 'Project: $PROJECT_NAME<br/>Build # $BUILD_NUMBER<br/>Build status: ' + "${env.BUILD_STATUS}" + '<br/>Failed Reason: ' + FAILED_REASON + '<br/>View job results: $BUILD_URL<br/>Console output:<br/>${BUILD_URL}consoleFull'
+    )
+  }
+  else { // PR check, send email to PR creator
+    emailext (
+      to: '$ghprbActualCommitAuthorEmail',
+      subject: '$PROJECT_NAME - Build # $BUILD_NUMBER - ' + "${env.BUILD_STATUS}",
+      body: 'Project: $PROJECT_NAME<br/>Build # $BUILD_NUMBER<br/>Build status: ' + "${env.BUILD_STATUS}" + '<br/>View job results: $BUILD_URL<br/>Console output:<br/>${BUILD_URL}consoleFull'
+    )
+  }
+}
+
+def cleanupSpace() {
+  retry(3){
+    sh """
+    service docker status || (service docker start; service docker status)
+    docker stop \$(docker ps -a -q) || true
+    docker system prune -a --volumes -f || true
+    """
+  }
+}
+def createTestReportDir() {
+  TEST_REPORT_DIR = "test-reports"
+  sh """
+  rm -Rf \$(pwd)/${TEST_REPORT_DIR}
+  mkdir -p \$(pwd)/${TEST_REPORT_DIR}
+  chmod -R 777 \$(pwd)/${TEST_REPORT_DIR}
+  """
+}
+def createLocalStorageFolders() {
+  LOCAL_STORAGE = "data"
+  sh """
+  rm -Rf \$(pwd)/${LOCAL_STORAGE}
+  mkdir -p \$(pwd)/${LOCAL_STORAGE}/dynamodblocal
+  mkdir -p \$(pwd)/${LOCAL_STORAGE}/minio
+  chmod -R 777 \$(pwd)/${LOCAL_STORAGE}
+  """
+}
+
+def isPreReleaseVersion(VERSION) {
+  VERSION_SUFFIX = VERSION.split('\\.')[-1]
+  if (VERSION_SUFFIX.matches(/\d(?:a|b|rc)\d/)) {
+    return true
+  }
+  return false
+}
+
+def publishArtifact() {
+  try {
+    ARTIFACT_VERSION = sh(returnStdout: true, script: 'python setup.py --version').trim()
+    echo "Artifact Version: ${ARTIFACT_VERSION}"
+    sh 'python setup.py sdist upload -r inin-pypi'
+  } catch(Exception e) {
+    echo "Skipping publish of artifact version ${ARTIFACT_VERSION}. Exception is ${e}"
+  }
+}
+
+def hasChangesInSubtree(subfolder) {
+  NUM_FILES_CHANGED_VAL = sh(returnStdout: true, script: "git diff-tree --name-only -r ${COMMIT_ID} | grep ${subfolder} | wc -l").trim()
+  NUM_FILES_CHANGED = NUM_FILES_CHANGED_VAL as Integer
+  echo "Number of files changed in subfolder [${subfolder}]: ${NUM_FILES_CHANGED}"
+  if (NUM_FILES_CHANGED > 0) {
+    return true
+  }
+  return false
+}
 
 timeout(150) {
     node('dev_v2') {
@@ -10,22 +84,53 @@ timeout(150) {
 
       env.BUILD_STATUS = 'SUCCESS'
 
+      stage('test'){
+         sh """
+         echo 'test'
+         """
+      }
+
+      stage('Clean Checkout') {
+        retry(3){
+          checkout scm
+          COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+          BRANCH = sh(returnStdout: true, script: "git branch -r --contains ${COMMIT_ID}").trim().split('/')[-1]
+          COMMIT_TAG = sh(returnStdout: true, script: "(git describe --exact-match ${COMMIT_ID}) 2> /dev/null || git show-ref --tags -d | grep ^${COMMIT_ID} | sed -e 's,.* refs/tags/,,' -e 's/\\^{}//' | xargs || echo ''").trim()
+          if(BRANCH.equals("master")) {
+            NICKNAME = 'main'
+          } else {
+            NICKNAME = 'PR'
+          }
+          sh "echo ${NICKNAME}"
+          sh """
+          rm -rf allure-results
+          mkdir allure-results
+          """
+          withCredentials([usernamePassword(credentialsId: '14645c89-70a0-4b46-a8a2-2f0a580d13dd', usernameVariable: 'user', passwordVariable: 'password')]) {
+            sh """
+            rm -rf pip.conf
+            echo '[global]' >> pip.conf
+            echo 'extra-index-url = https://$user:$password@purecloud.jfrog.io/purecloud/api/pypi/inin-pypi/simple' >> pip.conf
+            """
+          }
+          createLocalStorageFolders()
+          createTestReportDir()
+        }
+      }
 
       stage('Provide dynamodb and minio containers for testing') {
+
         sh """
         curl https://sh.rustup.rs -sSf | sh -s -- -y
-        """
-
-        sh """
         source $HOME/.cargo/env
+        virtualenv -p python3.6 venv --clear
+        . venv/bin/activate
+        pip install setuptools_rust==0.8.4
+        python python/setup.py bdist_wheel upload -r inin-pypi
         """
 
         sh """
-        python setup.py develop
-        """
-
-        sh """
-        cd ./python/ffi/target/debug | ls
+        ls python/ffi/target/debug
         """
       }
     }

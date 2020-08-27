@@ -129,10 +129,6 @@ timeout(150) {
         cd python
         python setup.py bdist_wheel upload -r inin-pypi
         """
-
-        sh """
-        ls python/ffi/target/debug
-        """
       }
     }
 }

@@ -122,7 +122,7 @@ timeout(150) {
 
         sh """
         docker build -t snipspg .
-        docker container run snipspg /bin/bash -c "source $HOME/.cargo/env && python3.6 setup.py bdist_wheel upload -r inin-pypi"
+        docker container run snipspg /bin/bash -c "source /home/nlu_user/.cargo/env && python3.6 setup.py bdist_wheel upload -r inin-pypi"
         // curl https://sh.rustup.rs -sSf | sh -s -- -y
         // source $HOME/.cargo/env
         // virtualenv -p python3.6 venv --clear

@@ -9,7 +9,7 @@ from setuptools_rust import Binding, RustExtension
 
 packages = [p for p in find_packages() if "tests" not in p]
 
-PACKAGE_NAME = "snips_nlu_parsers"
+PACKAGE_NAME = "snips_nlu_parsers_genesys"
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_PATH = os.path.join(ROOT_PATH, PACKAGE_NAME)
 README = os.path.join(ROOT_PATH, "README.rst")

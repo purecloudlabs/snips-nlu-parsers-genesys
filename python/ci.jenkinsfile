@@ -44,7 +44,7 @@ timeout(150) {
 
       stage('Clean Checkout') {
         retry(3){
-          cleanupSpace()
+          
           checkout scm
           COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
           BRANCH = sh(returnStdout: true, script: "git branch -r --contains ${COMMIT_ID}").trim().split('/')[-1]

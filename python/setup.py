@@ -9,7 +9,7 @@ from setuptools_rust import Binding, RustExtension
 
 packages = [p for p in find_packages() if "tests" not in p]
 
-PACKAGE_NAME = "snips_nlu_parsers_genesys"
+PACKAGE_NAME = "snips_nlu_parsers"
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_PATH = os.path.join(ROOT_PATH, PACKAGE_NAME)
 README = os.path.join(ROOT_PATH, "README.rst")
@@ -37,7 +37,7 @@ rust_extension = RustExtension(
     args=["--verbose"] if "--verbose" in sys.argv else None,
     binding=Binding.NoBinding)
 
-setup(name=PACKAGE_NAME,
+setup(name="snips_nlu_parsers_genesys",
       description="Python wrapper of the snips-nlu-parsers Rust crate",
       long_description=readme,
       version=version,

@@ -37,7 +37,7 @@ rust_extension = RustExtension(
     args=["--verbose"] if "--verbose" in sys.argv else None,
     binding=Binding.NoBinding)
 
-setup(name="snips_nlu_parsers_genesys",
+setup(name=PACKAGE_NAME,
       description="Python wrapper of the snips-nlu-parsers Rust crate",
       long_description=readme,
       version=version,

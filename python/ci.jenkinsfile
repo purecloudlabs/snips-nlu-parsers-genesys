@@ -71,7 +71,7 @@ timeout(150) {
         }
       }
 
-      stage('Bld pckg pub to artf') {
+      stage('Build package and publish to artifactory') {
 
         sh """
         curl https://sh.rustup.rs -sSf | sh -s -- -y

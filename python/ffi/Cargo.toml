@@ -1,6 +1,6 @@
 [package]
 name = "snips-nlu-parsers-python-ffi"
-version = "0.1.0-alpha.1"
+version = "0.4.3"
 authors = ["Adrien Ball <adrien.ball@snips.ai>"]
 edition = "2018"
 

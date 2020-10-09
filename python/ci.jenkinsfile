@@ -1,33 +1,6 @@
 @Library('pipeline-library@master')
 import com.genesys.jenkins.CI
 
-def cleanupSpace() {
-  retry(3){
-    sh """
-    service docker status || (service docker start; service docker status)
-    docker stop \$(docker ps -a -q) || true
-    docker system prune -a --volumes -f || true
-    """
-  }
-}
-def createTestReportDir() {
-  TEST_REPORT_DIR = "test-reports"
-  sh """
-  rm -Rf \$(pwd)/${TEST_REPORT_DIR}
-  mkdir -p \$(pwd)/${TEST_REPORT_DIR}
-  chmod -R 777 \$(pwd)/${TEST_REPORT_DIR}
-  """
-}
-def createLocalStorageFolders() {
-  LOCAL_STORAGE = "data"
-  sh """
-  rm -Rf \$(pwd)/${LOCAL_STORAGE}
-  mkdir -p \$(pwd)/${LOCAL_STORAGE}/dynamodblocal
-  mkdir -p \$(pwd)/${LOCAL_STORAGE}/minio
-  chmod -R 777 \$(pwd)/${LOCAL_STORAGE}
-  """
-}
-
 timeout(150) {
     node('dev_v2') {
       ECR_REPO = "490606849374.dkr.ecr.us-east-1.amazonaws.com/ai-platform"
@@ -44,7 +17,6 @@ timeout(150) {
 
       stage('Clean Checkout') {
         retry(3){
-          cleanupSpace()
           checkout scm
           COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
           BRANCH = sh(returnStdout: true, script: "git branch -r --contains ${COMMIT_ID}").trim().split('/')[-1]
@@ -66,8 +38,7 @@ timeout(150) {
             echo 'extra-index-url = https://$user:$password@purecloud.jfrog.io/purecloud/api/pypi/inin-pypi/simple' >> pip.conf
             """
           }
-          createLocalStorageFolders()
-          createTestReportDir()
+
         }
       }
 

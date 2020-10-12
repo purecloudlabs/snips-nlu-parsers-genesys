@@ -1,0 +1,58 @@
+@Library('pipeline-library@master')
+import com.genesys.jenkins.CI
+
+timeout(150) {
+    node('dev_v2') {
+      ECR_REPO = "490606849374.dkr.ecr.us-east-1.amazonaws.com/ai-platform"
+      ECR_REGISTRY_ID = "490606849374"
+      ECR_REGION = "us-east-1"
+
+      env.BUILD_STATUS = 'SUCCESS'
+
+      stage('test'){
+         sh """
+         echo 'test'
+         """
+      }
+
+      stage('Clean Checkout') {
+        retry(3){
+          checkout scm
+          COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+          BRANCH = sh(returnStdout: true, script: "git branch -r --contains ${COMMIT_ID}").trim().split('/')[-1]
+          COMMIT_TAG = sh(returnStdout: true, script: "(git describe --exact-match ${COMMIT_ID}) 2> /dev/null || git show-ref --tags -d | grep ^${COMMIT_ID} | sed -e 's,.* refs/tags/,,' -e 's/\\^{}//' | xargs || echo ''").trim()
+          if(BRANCH.equals("master")) {
+            NICKNAME = 'main'
+          } else {
+            NICKNAME = 'PR'
+          }
+          sh "echo ${NICKNAME}"
+          sh """
+          rm -rf allure-results
+          mkdir allure-results
+          """
+          withCredentials([usernamePassword(credentialsId: '14645c89-70a0-4b46-a8a2-2f0a580d13dd', usernameVariable: 'user', passwordVariable: 'password')]) {
+            sh """
+            rm -rf pip.conf
+            echo '[global]' >> pip.conf
+            echo 'extra-index-url = https://$user:$password@purecloud.jfrog.io/purecloud/api/pypi/inin-pypi/simple' >> pip.conf
+            """
+          }
+
+        }
+      }
+
+      stage('Build package and publish to artifactory') {
+
+        sh """
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+        source $HOME/.cargo/env
+        virtualenv -p python3.6 venv --clear
+        . venv/bin/activate
+        pip install setuptools_rust==0.8.4
+        cd python
+        python setup.py bdist_wheel upload -r inin-pypi
+        """
+      }
+    }
+}

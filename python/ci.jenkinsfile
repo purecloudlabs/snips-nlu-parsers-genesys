@@ -31,7 +31,7 @@ timeout(150) {
           rm -rf allure-results
           mkdir allure-results
           """
-          withCredentials([usernamePassword(credentialsId: '14645c89-70a0-4b46-a8a2-2f0a580d13dd', usernameVariable: 'user', passwordVariable: 'password')]) {
+          withCredentials([usernamePassword(credentialsId: params.CREDENTIALSID, usernameVariable: 'user', passwordVariable: 'password')]) {
             sh """
             rm -rf pip.conf
             echo '[global]' >> pip.conf

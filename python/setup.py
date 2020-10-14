@@ -30,6 +30,7 @@ with io.open(README, "rt", encoding="utf8") as f:
 required = [
     "future>=0.16,<0.18",
     "pathlib>=1.0,<2.0; python_version < '3.4'",
+    "setuptools_rust==0.8.4"
 ]
 
 rust_extension = RustExtension(

@@ -43,16 +43,34 @@ timeout(150) {
       }
 
       stage('Build package and publish to artifactory') {
+        if(BRANCH.equals("master")) {
 
-        sh """
-        curl https://sh.rustup.rs -sSf | sh -s -- -y
-        source $HOME/.cargo/env
-        virtualenv -p python3.6 venv --clear
-        . venv/bin/activate
-        pip install setuptools_rust==0.8.4
-        cd python
-        python setup.py bdist_wheel upload -r inin-pypi
-        """
+            sh """
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            source $HOME/.cargo/env
+            virtualenv -p python3.6 venv --clear
+            . venv/bin/activate
+            pip install setuptools_rust==0.8.4
+            cd python
+            python setup.py bdist_wheel upload -r inin-pypi
+            """
+        }
+        else {
+            if(params.BUILD) {
+                sh """
+                curl https://sh.rustup.rs -sSf | sh -s -- -y
+                source $HOME/.cargo/env
+                virtualenv -p python3.6 venv --clear
+                . venv/bin/activate
+                pip install setuptools_rust==0.8.4
+                cd python
+                python setup.py bdist_wheel upload -r inin-pypi
+                """
+            }
+            else {
+             sh "echo Pipeline did not build package as this is not a master branch nor is BUILD parameter set. "
+            }
+        }
       }
     }
 }

@@ -1,4 +1,4 @@
-FROM python:3.6-slim-buster
+FROM python:3.8-slim-buster
 
 ENV WORKDIR=/snipspg
 
@@ -15,7 +15,7 @@ COPY pip.conf /home/nlu_user/.pip/pip.conf
 COPY . ${WORKDIR}/
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
-    && /bin/bash -c "source /home/nlu_user/.cargo/env && python3.6 -m pip install  --user setuptools_rust==0.8.4"
+    && /bin/bash -c "source /home/nlu_user/.cargo/env && python3.8 -m pip install  --user setuptools_rust==0.8.4"
 
 USER root
 RUN chown -R nlu_user:nlu_user ${WORKDIR}

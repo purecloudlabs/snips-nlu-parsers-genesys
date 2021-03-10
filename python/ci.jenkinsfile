@@ -47,7 +47,7 @@ timeout(150) {
         sh """
         curl https://sh.rustup.rs -sSf | sh -s -- -y
         source $HOME/.cargo/env
-        virtualenv -p python3.8 venv --clear
+        virtualenv -p python3.7 venv --clear
         . venv/bin/activate
         pip install setuptools_rust==0.8.4
         cd python

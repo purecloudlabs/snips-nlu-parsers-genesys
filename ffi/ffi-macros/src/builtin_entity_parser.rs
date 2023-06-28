@@ -6,6 +6,9 @@ use snips_nlu_ontology_ffi_macros::{CBuiltinEntity, CBuiltinEntityArray};
 use snips_nlu_parsers::{BuiltinEntityParser, BuiltinEntityParserLoader, EntityValue};
 use std::ffi::CStr;
 use std::slice;
+use std::thread;
+use std::sync::mpsc;
+use std::time::Duration;
 
 #[repr(C)]
 pub struct CBuiltinEntityParser(*const libc::c_void);
@@ -157,13 +160,35 @@ pub fn extract_builtin_entity(
     } else {
         None
     };
-    let opt_filters = opt_filters.as_ref().map(|vec| vec.as_slice());
+    let (sender, receiver) = mpsc::channel();
 
-    parser.extract_entities(
-        sentence,
-        opt_filters,
-        max_alternative_resolved_values as usize,
-    )
+    let thread_join_handle = thread::spawn(move || {
+        let opt_filters = opt_filters.as_ref().map(|vec| vec.as_slice());
+        match sender.send(parser.extract_entities(
+            sentence,
+            opt_filters,
+            max_alternative_resolved_values as usize,
+        )){
+        Ok(()) => {}, // everything good
+        Err(_) => {}, // we have been released, don't panic
+    }
+    });
+
+//     return receiver.recv_timeout(Duration::from_millis(1000)).unwrap();
+
+        let res = receiver.recv_timeout(Duration::from_millis(1000));
+//     thread_join_handle.join().unwrap()
+//         res.unwrap()
+       if res.is_ok() {
+        return res.unwrap()
+        }
+        else {
+
+//          Err(*Box::from(res.err().unwrap()))
+            Err(res.err().unwrap().into())
+
+        }
+
 }
 
 pub fn destroy_builtin_entity_parser(ptr: *mut CBuiltinEntityParser) -> Result<()> {

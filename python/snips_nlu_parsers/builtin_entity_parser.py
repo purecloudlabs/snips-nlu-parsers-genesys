@@ -71,8 +71,14 @@ class BuiltinEntityParser(object):
             exit_code = lib.snips_nlu_parsers_extract_builtin_entities_json(
                 self._parser, text.encode("utf8"), scope,
                 max_alternative_resolved_values, byref(ptr))
-            check_ffi_error(exit_code, "Something went wrong when extracting "
-                                       "builtin entities")
+            try:
+                check_ffi_error(exit_code, "Something went wrong when extracting "
+                                           "builtin entities")
+            except ValueError as ex:
+                if "timed out waiting on channel" in str(ex):
+                    return []
+                else:
+                    raise ex
             result = string_at(ptr)
             return json.loads(result.decode("utf8"))
 

@@ -3,9 +3,64 @@ from _ctypes import byref
 from builtins import bytes, str
 from ctypes import c_char_p, c_int, c_void_p, string_at
 from pathlib import Path
+from future.utils import text_type
 
 from snips_nlu_parsers.utils import (
-    CStringArray, check_ffi_error, lib, string_pointer)
+    CStringArray, check_ffi_error, lib, string_pointer, temp_dir)
+
+import multiprocessing as mp
+
+
+def unicode_string(string):
+    if isinstance(string, text_type):
+        return string
+    if isinstance(string, bytes):
+        return string.decode("utf8")
+    raise TypeError("Cannot convert %s into unicode string" % type(string))
+
+
+def json_string(json_object, indent=2, sort_keys=True):
+    json_dump = json.dumps(json_object, indent=indent, sort_keys=sort_keys,
+                           separators=(',', ': '))
+    return unicode_string(json_dump)
+
+
+from pathlib import Path
+from tempfile import mkdtemp
+
+tmp_dir = mkdtemp()
+serialization_dir = Path(tmp_dir)
+
+gazetteer_entity_parser = None
+metadata = {
+    "language": "EN",
+    "gazetteer_parser": gazetteer_entity_parser
+}
+metadata_path = serialization_dir / "metadata.json"
+with metadata_path.open("w", encoding="utf-8") as f:
+    f.write(json_string(metadata))
+
+parser = c_void_p()
+# raise Exception(type(serialization_dir))
+parser_path = bytes(str(serialization_dir), encoding="utf8")
+exit_code = lib.snips_nlu_parsers_load_builtin_entity_parser(
+    byref(parser), parser_path)
+check_ffi_error(exit_code, "Something went wrong when loading the "
+                           "builtin entity parser")
+
+
+def mp_builtin(q, text):
+    with string_pointer(c_char_p()) as ptr:
+        exit_code = lib.snips_nlu_parsers_extract_builtin_entities_json(
+            parser, text.encode("utf8"), None, 5, byref(ptr))
+        try:
+            check_ffi_error(exit_code, "Something went wrong when loading the "
+                                       "builtin entity parser")
+
+        except Exception as ex:
+            q.put(str(ex))
+        else:
+            q.put(string_at(ptr))
 
 
 class BuiltinEntityParser(object):
@@ -67,14 +122,30 @@ class BuiltinEntityParser(object):
             arr.data = (c_char_p * len(scope))(*scope)
             scope = byref(arr)
 
-        with string_pointer(c_char_p()) as ptr:
-            exit_code = lib.snips_nlu_parsers_extract_builtin_entities_json(
-                self._parser, text.encode("utf8"), scope,
-                max_alternative_resolved_values, byref(ptr))
-            check_ffi_error(exit_code, "Something went wrong when extracting "
-                                       "builtin entities")
-            result = string_at(ptr)
-            return json.loads(result.decode("utf8"))
+        ctx = mp.get_context('fork')
+        q = ctx.Queue()
+        p = ctx.Process(target=mp_builtin, args=(q, text))
+        p.start()
+        result = q.get()
+        if type(result) == str:
+            p.kill()
+            return json.loads("[]")
+        p.join()
+        return json.loads(result.decode("utf8"))
+        # with string_pointer(c_char_p()) as ptr:
+        #     exit_code = lib.snips_nlu_parsers_extract_builtin_entities_json(
+        #         self._parser, text.encode("utf8"), scope,
+        #         max_alternative_resolved_values, byref(ptr))
+        #     try:
+        #         check_ffi_error(exit_code, "Something went wrong when extracting "
+        #                                    "builtin entities")
+        #     except ValueError as ex:
+        #         if "timed out waiting on channel" in str(ex):
+        #             return []
+        #         else:
+        #             raise ex
+        #     result = string_at(ptr)
+        #     return json.loads(result.decode("utf8"))
 
     def extend_gazetteer_entity(self, entity_name, entity_values):
         """Extends a builtin gazetteer entity with custom values
